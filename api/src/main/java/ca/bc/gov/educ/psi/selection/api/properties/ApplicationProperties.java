@@ -11,9 +11,6 @@ public class ApplicationProperties {
   public static final String PSI_SELECTION_API = "PSI-SELECTION-API";
   public static final String CORRELATION_ID = "correlationID";
 
-  @Value("${nats.url}")
-  String natsUrl;
-
   @Value("${nats.maxReconnect}")
   Integer natsMaxReconnect;
 
