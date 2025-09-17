@@ -1,6 +1,6 @@
 package ca.bc.gov.educ.psi.selection.api.repository.v1;
 
-import ca.bc.gov.educ.psi.selection.api.model.v1.PSISelectionEntity;
+import ca.bc.gov.educ.psi.selection.api.model.v1.PsiEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.stereotype.Repository;
@@ -8,5 +8,5 @@ import org.springframework.stereotype.Repository;
 import java.util.UUID;
 
 @Repository
-public interface PSISelectionRepository extends JpaRepository<PSISelectionEntity, UUID>, JpaSpecificationExecutor<PSISelectionEntity> {
+public interface PSIRepository extends JpaRepository<PsiEntity, UUID>, JpaSpecificationExecutor<PsiEntity> {
 }
