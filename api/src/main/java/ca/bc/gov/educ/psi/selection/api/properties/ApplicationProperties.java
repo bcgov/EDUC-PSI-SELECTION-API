@@ -20,9 +20,6 @@ public class ApplicationProperties {
   @Value("${nats.connectionName}")
   private String connectionName;
 
-  @Value("${url.api.institute}")
-  private String instituteApiURL;
-
   @Value("${url.token}")
   private String tokenURL;
 
@@ -31,4 +28,13 @@ public class ApplicationProperties {
 
   @Value("${client.secret}")
   private String clientSecret;
+
+  @Value("${url.api.institute}")
+  private String instituteApiURL;
+
+  @Value("${url.api.grad.student}")
+  private String gradStudentApiURL;
+
+  @Value("${url.api.student}")
+  private String studentApiURL;
 }
