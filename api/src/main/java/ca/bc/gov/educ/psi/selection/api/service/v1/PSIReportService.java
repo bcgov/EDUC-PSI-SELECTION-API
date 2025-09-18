@@ -1,6 +1,7 @@
 package ca.bc.gov.educ.psi.selection.api.service.v1;
 
 import ca.bc.gov.educ.psi.selection.api.exception.PSISelectionAPIRuntimeException;
+import ca.bc.gov.educ.psi.selection.api.model.v1.PsiEntity;
 import ca.bc.gov.educ.psi.selection.api.model.v1.StudentPsiChoiceEntity;
 import ca.bc.gov.educ.psi.selection.api.rest.RestUtils;
 import ca.bc.gov.educ.psi.selection.api.repository.v1.StudentPSIChoiceRepository;
@@ -21,7 +22,9 @@ import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import static ca.bc.gov.educ.psi.selection.api.constants.v1.reports.ReportTypeCodes.PSI_REPORT;
 import static ca.bc.gov.educ.psi.selection.api.constants.v1.reports.PSIReportHeaders.*;
@@ -47,13 +50,17 @@ public class PSIReportService {
         log.debug("Fetched {} student details", students.size());
         log.debug("first fetched student if available: {}", students.stream().findFirst().orElse(null));
 
-        // todo get psi data for students (create records in dev db)
-        // what is the current school year dates exactly?
+        // todo what is the current school year dates exactly?
         List<StudentPsiChoiceEntity> studentPsiChoiceEntities = studentPSIChoiceRepository.findStudentsInAllPSIs("PAPER", LocalDate.now().withMonth(7).withDayOfMonth(1).atStartOfDay(), LocalDate.now().withMonth(9).withDayOfMonth(27).atStartOfDay());
         log.debug("Fetched {} student PSI choice records", studentPsiChoiceEntities.size());
         log.debug("first fetched student PSI choice record if available: {}", studentPsiChoiceEntities.stream().findFirst().orElse(null));
 
-        // todo update csv content with psi choice
+        // Group PSI choices by PEN (student number) to handle multiple choices per student
+        Map<String, List<StudentPsiChoiceEntity>> psiChoicesByPen = studentPsiChoiceEntities.stream()
+                .filter(choice -> choice.getPen() != null)
+                .collect(Collectors.groupingBy(StudentPsiChoiceEntity::getPen));
+
+        log.debug("Grouped PSI choices by PEN for {} unique students", psiChoicesByPen.size());
 
         CSVFormat csvFormat = CSVFormat.DEFAULT.builder()
                 .setHeader(SURNAME.getCode(), FIRST_NAME.getCode(), MIDDLE_NAMES.getCode(), LOCAL_ID.getCode(), PEN.getCode(), PSI_REPORT.getCode(), TRANSMISSION_MODE.getCode())
@@ -64,8 +71,14 @@ public class PSIReportService {
             CSVPrinter csvPrinter = new CSVPrinter(writer, csvFormat);
 
             for (Student student : students) {
-                List<String> row = prepareErrorDataForCsv(student);
+                List<StudentPsiChoiceEntity> studentPsiChoices = psiChoicesByPen.getOrDefault(student.getPen(), List.of());
+                List<String> row = prepareDataForCsv(student, studentPsiChoices);
                 csvPrinter.printRecord(row);
+
+                // Debug: Print row for the dev test student
+                if ("143244747".equals(student.getPen())) {
+                    log.debug("CSV row for student with PEN 143244747: {}", row);
+                }
             }
 
             csvPrinter.flush();
@@ -81,15 +94,27 @@ public class PSIReportService {
         }
     }
 
-    public List<String> prepareErrorDataForCsv(Student student) {
+    public List<String> prepareDataForCsv(Student student, List<StudentPsiChoiceEntity> psiChoices) {
+        String psiNames = psiChoices.stream()
+                .map(choice -> restUtils.getPsiByCode(choice.getPsiCode())
+                        .map(PsiEntity::getPsiName)
+                        .orElse("Unknown PSI"))
+                .collect(Collectors.joining(";"));
+
+        String transmissionModes = psiChoices.stream()
+                .map(choice -> restUtils.getPsiByCode(choice.getPsiCode())
+                        .map(PsiEntity::getTransmissionMode)
+                        .orElse(""))
+                .collect(Collectors.joining(";"));
+
         return Arrays.asList(
-                        student.getLegalLastName(),
-                        student.getLegalFirstName(),
-                        student.getLegalMiddleNames(),
-                        student.getLocalID(),
-                        student.getPen(),
-                        "", // PSI
-                        ""  // Transmission Mode
-                );
+                student.getLegalLastName(),
+                student.getLegalFirstName(),
+                student.getLegalMiddleNames(),
+                student.getLocalID(),
+                student.getPen(),
+                psiNames,
+                transmissionModes
+        );
     }
 }

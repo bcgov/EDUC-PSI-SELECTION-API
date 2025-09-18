@@ -1,7 +1,9 @@
 package ca.bc.gov.educ.psi.selection.api.rest;
 
 
+import ca.bc.gov.educ.psi.selection.api.model.v1.PsiEntity;
 import ca.bc.gov.educ.psi.selection.api.properties.ApplicationProperties;
+import ca.bc.gov.educ.psi.selection.api.repository.v1.PSIRepository;
 import ca.bc.gov.educ.psi.selection.api.struct.v1.external.gradStudent.StudentSearchRequest;
 import ca.bc.gov.educ.psi.selection.api.struct.v1.external.institute.SchoolTombstone;
 import ca.bc.gov.educ.psi.selection.api.struct.v1.external.student.Student;
@@ -39,9 +41,12 @@ public class RestUtils {
     public static final String PAGE_SIZE_VALUE = "5";
     public static final int chunkSize = 100;
     private final Map<String, SchoolTombstone> schoolMap = new ConcurrentHashMap<>();
+    private final Map<String, PsiEntity> psiMap = new ConcurrentHashMap<>();
     private final Map<String, List<UUID>> independentAuthorityToSchoolIDMap = new ConcurrentHashMap<>();
     private final ReadWriteLock schoolLock = new ReentrantReadWriteLock();
+    private final ReadWriteLock psiLock = new ReentrantReadWriteLock();
     private final WebClient webClient;
+    private final PSIRepository pSIRepository;
 
     @Value("${initialization.background.enabled}")
     private Boolean isBackgroundInitializationEnabled;
@@ -50,9 +55,10 @@ public class RestUtils {
     private final ApplicationProperties props;
 
     @Autowired
-    public RestUtils(WebClient webClient, final ApplicationProperties props) {
+    public RestUtils(WebClient webClient, final ApplicationProperties props, PSIRepository pSIRepository) {
       this.webClient = webClient;
       this.props = props;
+      this.pSIRepository = pSIRepository;
     }
 
     @PostConstruct
@@ -63,6 +69,7 @@ public class RestUtils {
     }
 
     private void initialize() {
+        this.populatePsiMap();
         this.populateSchoolMap();
     }
 
@@ -93,6 +100,14 @@ public class RestUtils {
         return Optional.ofNullable(this.schoolMap.get(schoolID));
     }
 
+    public Optional<PsiEntity> getPsiByCode(final String psiCode) {
+        if (this.psiMap.isEmpty()) {
+            log.info("PSI map is empty reloading PSIs");
+            this.populatePsiMap();
+        }
+        return Optional.ofNullable(this.psiMap.get(psiCode));
+    }
+
     public void populateSchoolMap() {
         val writeLock = this.schoolLock.writeLock();
         try {
@@ -109,6 +124,21 @@ public class RestUtils {
             writeLock.unlock();
         }
         log.info("Loaded  {} schools to memory", this.schoolMap.values().size());
+    }
+
+    public void populatePsiMap() {
+        val writeLock = this.psiLock.writeLock();
+        try {
+            writeLock.lock();
+            for (val psi : pSIRepository.findAll()) {
+                this.psiMap.put(psi.getPsiCode(), psi);
+            }
+        } catch (Exception ex) {
+            log.error("Unable to load map cache PSI {}", ex);
+        } finally {
+            writeLock.unlock();
+        }
+        log.info("Loaded  {} PSIs to memory", this.psiMap.values().size());
     }
 
      // todo grad endpoint will need to be adjusted, currently this gets all students by school (need to filter by current program and grade 12/ad)
