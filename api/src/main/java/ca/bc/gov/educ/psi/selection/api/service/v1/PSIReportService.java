@@ -2,6 +2,7 @@ package ca.bc.gov.educ.psi.selection.api.service.v1;
 
 import ca.bc.gov.educ.psi.selection.api.rest.RestUtils;
 import ca.bc.gov.educ.psi.selection.api.repository.v1.StudentPSIChoiceRepository;
+import ca.bc.gov.educ.psi.selection.api.struct.v1.external.student.Student;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -20,12 +21,13 @@ public class PSIReportService {
     }
 
     public String generateReport(UUID schoolID) {
-        // todo
-        // send a schoolID to grad student -> receive UUID of students based on criteria
+        // Send a schoolID to grad student -> receive UUID of students based on criteria
         List<UUID> studentGradRecordIDs = restUtils.getGradStudentUUIDsFromSchoolID(schoolID);
         log.debug("studentGradRecordIDs: {}", studentGradRecordIDs);
 
-        // todo for each studentGradRecordID UUID, get student details from student API
+        // Get student details from student API for each studentGradRecordID UUID
+        List<Student> students = restUtils.getStudentDetailsByUUIDs(studentGradRecordIDs);
+        log.debug("Fetched {} student details", students.size());
 
         // todo get psi data for students (create records in dev db)
 
