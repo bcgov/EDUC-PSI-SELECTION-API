@@ -28,6 +28,7 @@ public class PSIReportService {
         // Get student details from student API for each studentGradRecordID UUID
         List<Student> students = restUtils.getStudentDetailsByUUIDs(studentGradRecordIDs);
         log.debug("Fetched {} student details", students.size());
+        log.debug("first fetched student if available: {}", students.stream().findFirst().orElse(null));
 
         // todo get psi data for students (create records in dev db)
 
