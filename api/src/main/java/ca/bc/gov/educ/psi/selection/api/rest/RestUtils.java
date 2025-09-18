@@ -3,13 +3,18 @@ package ca.bc.gov.educ.psi.selection.api.rest;
 
 import ca.bc.gov.educ.psi.selection.api.properties.ApplicationProperties;
 import ca.bc.gov.educ.psi.selection.api.struct.v1.external.gradStudent.StudentSearchRequest;
+import ca.bc.gov.educ.psi.selection.api.struct.v1.external.institute.SchoolTombstone;
 import ca.bc.gov.educ.psi.selection.api.struct.v1.external.student.Student;
 import ca.bc.gov.educ.psi.selection.api.struct.v1.external.student.PaginatedResponse;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.annotation.PostConstruct;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import lombok.val;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
@@ -17,11 +22,10 @@ import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.net.URI;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * This class is used for REST calls
@@ -31,29 +35,83 @@ import java.util.UUID;
 @Component
 @Slf4j
 public class RestUtils {
-  private static final String CONTENT_TYPE = "Content-Type";
-  public static final String PAGE_SIZE_VALUE = "5";
-  public static final int chunkSize = 100;
-  private final WebClient webClient;
+    private static final String CONTENT_TYPE = "Content-Type";
+    public static final String PAGE_SIZE_VALUE = "5";
+    public static final int chunkSize = 100;
+    private final Map<String, SchoolTombstone> schoolMap = new ConcurrentHashMap<>();
+    private final Map<String, List<UUID>> independentAuthorityToSchoolIDMap = new ConcurrentHashMap<>();
+    private final ReadWriteLock schoolLock = new ReentrantReadWriteLock();
+    private final WebClient webClient;
 
-  @Getter
-  private final ApplicationProperties props;
+    @Value("${initialization.background.enabled}")
+    private Boolean isBackgroundInitializationEnabled;
 
-  @Autowired
-  public RestUtils(WebClient webClient, final ApplicationProperties props) {
-    this.webClient = webClient;
-    this.props = props;
-  }
+    @Getter
+    private final ApplicationProperties props;
 
-  private URI getSchoolHistoryURI(String criterion){
-    return UriComponentsBuilder.fromHttpUrl(this.props.getInstituteApiURL() + "/school/history/paginated")
-            .queryParam("pageNumber", "0")
-            .queryParam("pageSize", PAGE_SIZE_VALUE)
-            .queryParam("sort", "{\"createDate\":\"DESC\"}")
-            .queryParam("searchCriteriaList", criterion).build().toUri();
-  }
+    @Autowired
+    public RestUtils(WebClient webClient, final ApplicationProperties props) {
+      this.webClient = webClient;
+      this.props = props;
+    }
 
-  // todo grad endpoint will need to be adjusted, currently this gets all students by school (need to filter by current program and grade 12/ad)
+    @PostConstruct
+    public void init() {
+        if (this.isBackgroundInitializationEnabled != null && this.isBackgroundInitializationEnabled) {
+            ApplicationProperties.bgTask.execute(this::initialize);
+        }
+    }
+
+    private void initialize() {
+        this.populateSchoolMap();
+    }
+
+      private URI getSchoolHistoryURI(String criterion){
+        return UriComponentsBuilder.fromHttpUrl(this.props.getInstituteApiURL() + "/school/history/paginated")
+                .queryParam("pageNumber", "0")
+                .queryParam("pageSize", PAGE_SIZE_VALUE)
+                .queryParam("sort", "{\"createDate\":\"DESC\"}")
+                .queryParam("searchCriteriaList", criterion).build().toUri();
+      }
+
+    private List<SchoolTombstone> getSchools() {
+        log.info("Calling Institute api to load schools to memory");
+        return this.webClient.get()
+                .uri(this.props.getInstituteApiURL() + "/school")
+                .header(CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                .retrieve()
+                .bodyToFlux(SchoolTombstone.class)
+                .collectList()
+                .block();
+    }
+
+    public Optional<SchoolTombstone> getSchoolBySchoolID(final String schoolID) {
+        if (this.schoolMap.isEmpty()) {
+            log.info("School map is empty reloading schools");
+            this.populateSchoolMap();
+        }
+        return Optional.ofNullable(this.schoolMap.get(schoolID));
+    }
+
+    public void populateSchoolMap() {
+        val writeLock = this.schoolLock.writeLock();
+        try {
+            writeLock.lock();
+            for (val school : this.getSchools()) {
+                this.schoolMap.put(school.getSchoolId(), school);
+                if (StringUtils.isNotBlank(school.getIndependentAuthorityId())) {
+                    this.independentAuthorityToSchoolIDMap.computeIfAbsent(school.getIndependentAuthorityId(), k -> new ArrayList<>()).add(UUID.fromString(school.getSchoolId()));
+                }
+            }
+        } catch (Exception ex) {
+            log.error("Unable to load map cache school {}", ex);
+        } finally {
+            writeLock.unlock();
+        }
+        log.info("Loaded  {} schools to memory", this.schoolMap.values().size());
+    }
+
+     // todo grad endpoint will need to be adjusted, currently this gets all students by school (need to filter by current program and grade 12/ad)
     public List<UUID> getGradStudentUUIDsFromSchoolID(UUID schoolID) {
         log.info("Calling Grad api to fetch students for PSI report");
         // Build a StudentSearchRequest with the schoolId to send to the grad student API
