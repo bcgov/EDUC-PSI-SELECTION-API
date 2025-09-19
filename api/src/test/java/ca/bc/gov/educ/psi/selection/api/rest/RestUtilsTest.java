@@ -150,7 +150,7 @@ class RestUtilsTest {
         when(responseSpec.bodyToFlux(UUID.class)).thenReturn(Flux.fromIterable(expectedUUIDs));
 
         // When
-        List<UUID> result = restUtils.getGradStudentUUIDsFromSchoolID(schoolID);
+        List<UUID> result = restUtils.getGradStudentUUIDsFromSchoolID(List.of(schoolID), List.of("test"), List.of("test"));
 
         // Then
         assertNotNull(result);
@@ -173,7 +173,7 @@ class RestUtilsTest {
         when(responseSpec.bodyToFlux(UUID.class)).thenReturn(Flux.fromIterable(expectedUUIDs));
 
         // When
-        List<UUID> result = restUtils.getGradStudentUUIDsFromSchoolID(schoolID);
+        List<UUID> result = restUtils.getGradStudentUUIDsFromSchoolID(List.of(schoolID), List.of("test"), List.of("test"));
 
         // Then
         assertNotNull(result);

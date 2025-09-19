@@ -141,12 +141,9 @@ public class RestUtils {
         log.info("Loaded  {} PSIs to memory", this.psiMap.values().size());
     }
 
-     // todo grad endpoint will need to be adjusted, currently this gets all students by school (need to filter by current program and grade 12/ad)
-    public List<UUID> getGradStudentUUIDsFromSchoolID(UUID schoolID) {
-        log.info("Calling Grad api to fetch students for PSI report");
-        // Build a StudentSearchRequest with the schoolId to send to the grad student API
-        log.debug("schoolID: {}", schoolID);
-        StudentSearchRequest searchRequest = StudentSearchRequest.builder().schoolIds(List.of(schoolID)).build();
+    public List<UUID> getGradStudentUUIDsFromSchoolID(List<UUID> schoolIDs, List<String> programs, List<String> grades) {
+        log.debug("Calling Grad api to fetch students for PSI report with schoolIDs: {}, programs: {}, grades: {}", schoolIDs, programs, grades);
+        StudentSearchRequest searchRequest = StudentSearchRequest.builder().schoolIds(schoolIDs).programs(programs).grades(grades).build();
         return this.webClient.post()
                 .uri(this.props.getGradStudentApiURL() + "/gradstudentbysearchcriteria")
                 .header(CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)

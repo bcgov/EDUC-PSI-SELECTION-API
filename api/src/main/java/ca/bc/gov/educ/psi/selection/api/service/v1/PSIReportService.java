@@ -40,9 +40,17 @@ public class PSIReportService {
         this.restUtils = restUtils;
     }
 
+
+        //todo need more stuff in the reports
+        //API_PSI_SELECTION now has read access to:
+        //        ECM_DLVRY_INF
+        //        ECM_SLS_ORDR
+        //        ECM_SLS_ORDR_ITM
+
     public DownloadableReportResponse generateReport(SchoolTombstone school) {
         // Send a schoolID to grad student -> receive UUID of students based on criteria (currently just schoolID)
-        List<UUID> studentGradRecordIDs = restUtils.getGradStudentUUIDsFromSchoolID(UUID.fromString(school.getSchoolId()));
+        // todo need to put what is actually current in list of grad programs
+        List<UUID> studentGradRecordIDs = restUtils.getGradStudentUUIDsFromSchoolID(List.of(UUID.fromString(school.getSchoolId())), List.of("1950", "SCCP"), List.of("12", "AD"));
         log.debug("studentGradRecordIDs: {}", studentGradRecordIDs);
 
         // Get student details from student API for each studentGradRecordID UUID
