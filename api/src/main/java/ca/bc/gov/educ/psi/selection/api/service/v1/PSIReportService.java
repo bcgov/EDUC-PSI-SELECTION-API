@@ -59,9 +59,18 @@ public class PSIReportService {
         log.debug("first fetched student if available: {}", students.stream().findFirst().orElse(null));
 
         // todo what is the current school year dates exactly?
+        // oct 1st 2024 -> Sept 30 2025
+        // do date logic - or grab from gdc frontend
         List<StudentPsiChoiceEntity> studentPsiChoiceEntities = studentPSIChoiceRepository.findStudentsInAllPSIs("PAPER", LocalDate.now().withMonth(7).withDayOfMonth(1).atStartOfDay(), LocalDate.now().withMonth(9).withDayOfMonth(27).atStartOfDay());
         log.debug("Fetched {} student PSI choice records", studentPsiChoiceEntities.size());
         log.debug("first fetched student PSI choice record if available: {}", studentPsiChoiceEntities.stream().findFirst().orElse(null));
+
+        //todo from entity id on student psi choice pull in the order information from the tables below
+//        SELECT * FROM ECM_SLS_ORDR_ITM;
+//
+//        SELECT * FROM ECM_DLVRY_INF c
+//        WHERE c.info_type = 'PSI_PREF';
+
 
         // Group PSI choices by PEN (student number) to handle multiple choices per student
         Map<String, List<StudentPsiChoiceEntity>> psiChoicesByPen = studentPsiChoiceEntities.stream()
@@ -93,7 +102,7 @@ public class PSIReportService {
 
             var downloadableReport = new DownloadableReportResponse();
             downloadableReport.setReportType(PSI_REPORT.getCode());
-            downloadableReport.setReportName(String.format("%s - PSI Report - %s", school.getMincode(), LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"))));
+            downloadableReport.setReportName(String.format("%s - PSI Selection Report - %s", school.getMincode(), LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"))));
             downloadableReport.setDocumentData(Base64.getEncoder().encodeToString(byteArrayOutputStream.toByteArray()));
             return downloadableReport;
 
