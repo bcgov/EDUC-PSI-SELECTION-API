@@ -40,13 +40,6 @@ public class PSIReportService {
         this.restUtils = restUtils;
     }
 
-
-        //todo need more stuff in the reports
-        //API_PSI_SELECTION now has read access to:
-        //        ECM_DLVRY_INF
-        //        ECM_SLS_ORDR
-        //        ECM_SLS_ORDR_ITM
-
     public DownloadableReportResponse generateReport(SchoolTombstone school) {
         // Send a schoolID to grad student -> receive UUID of students based on criteria (currently just schoolID)
         // todo need to put what is actually current in list of grad programs
@@ -70,6 +63,9 @@ public class PSIReportService {
 //
 //        SELECT * FROM ECM_DLVRY_INF c
 //        WHERE c.info_type = 'PSI_PREF';
+
+        // todo order item can be bound on entity_id to psi choice entity
+        // todo delivery info can be bound on ecmDlvryInfId from order item to devlivery info table
 
 
         // Group PSI choices by PEN (student number) to handle multiple choices per student
