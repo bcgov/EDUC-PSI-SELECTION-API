@@ -14,7 +14,7 @@ import java.io.Serializable;
 @EqualsAndHashCode(callSuper = true)
 @Data
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class School extends BaseRequest implements Serializable {
+public class SchoolTombstone extends BaseRequest implements Serializable {
   /**
    * The constant serialVersionUID.
    */
