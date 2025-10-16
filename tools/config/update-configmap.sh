@@ -45,7 +45,7 @@ PSI_SELECTION_APIServiceClientSecret=$(curl -sX GET "https://$SOAM_KC/auth/admin
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $TKN" |
   jq -r '.value')
-
+  
 if [[ "$PSI_SELECTION_APIServiceClientSecret" != "" && ("$envValue" = "dev" || "$envValue" = "test") ]]; then
   echo
   echo Creating client psi-selection-api-service with secret
