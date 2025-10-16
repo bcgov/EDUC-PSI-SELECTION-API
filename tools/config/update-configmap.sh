@@ -46,6 +46,11 @@ PSI_SELECTION_APIServiceClientSecret=$(curl -sX GET "https://$SOAM_KC/auth/admin
   -H "Authorization: Bearer $TKN" |
   jq -r '.value')
   
+echo
+echo Removing Assessment API client if exists
+curl -sX DELETE "https://$SOAM_KC/auth/admin/realms/$SOAM_KC_REALM_ID/clients/$PSI_SELECTION_APIServiceClientID" \
+  -H "Authorization: Bearer $TKN"
+  
 if [[ "$PSI_SELECTION_APIServiceClientSecret" != "" && ("$envValue" = "dev" || "$envValue" = "test") ]]; then
   echo
   echo Creating client psi-selection-api-service with secret
