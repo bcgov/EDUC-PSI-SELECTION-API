@@ -28,9 +28,6 @@ public class OrderItemEntity {
     @Column(name = "ECM_DLVRY_INF_ID")
     private String ecmDlvryInfID;
 
-    @Column(name = "ECM_SLS_ORDR_ID")
-    private String ecmSlsOrdrID;
-
     @Column(name = "ECM_PSI_MAIL_BTC_ID")
     private String ecmPsiMailBtcID;
 
