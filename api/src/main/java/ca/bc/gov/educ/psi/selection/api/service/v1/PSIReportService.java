@@ -57,15 +57,15 @@ public class PSIReportService {
         log.debug("Fetched {} student details", students.size());
         log.debug("first fetched student if available: {}", students.stream().findFirst().orElse(null));
 
-        Map<String, List<Student>> studentsMap = students.stream()
-                .filter(choice -> StringUtils.isNotBlank(choice.getPen()))
-                .collect(Collectors.groupingBy(Student::getPen));
-
         // oct 1st -> Sept 30 
         var currentReportingPeriod = getCurrentReportingPeriod();
         List<OrderEntity> orderEntities = orderRepository.findAllByCreateDateBetweenAndOrderDateIsNotNull(currentReportingPeriod.getLeft(), currentReportingPeriod.getRight());
         log.debug("Fetched {} order entity records", orderEntities.size());
         log.debug("First fetched order record if available: {}", orderEntities.stream().findFirst().orElse(null));
+
+        Map<String, List<OrderEntity>> orderMap = orderEntities.stream()
+                .filter(order -> !order.getStudentXrefEntities().isEmpty())
+                .collect(Collectors.groupingBy(order -> order.getStudentXrefEntities().stream().findFirst().get().getStudentPen()));
 
         CSVFormat csvFormat = CSVFormat.DEFAULT.builder()
                 .setHeader(SURNAME.getCode(), FIRST_NAME.getCode(), MIDDLE_NAMES.getCode(), LOCAL_ID.getCode(), PEN.getCode(), PSI_REPORT.getCode(), TRANSMISSION_MODE.getCode(), ORDER_TYPE.getCode())
@@ -75,42 +75,47 @@ public class PSIReportService {
             BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(byteArrayOutputStream));
             CSVPrinter csvPrinter = new CSVPrinter(writer, csvFormat);
 
-            for (OrderEntity order : orderEntities) {
-                String psiName = "Not Applicable";
+            for (Student student : students) {
+                String psiName = null;
                 String transmissionMode = null;
                 String orderType = null;
-                Student student = new Student();
-//                var student = studentsMap.get();
-                
-                var orderItem = order.getOrderItemEntities().stream().findFirst();
-                if(orderItem.isPresent()) {
-                   var deliveryInfo = orderItem.get().getDeliveryInfoEntities().stream().findFirst();
-                   if(deliveryInfo.isPresent()) {
-                       var delivery = deliveryInfo.get();
-                       var infoType = delivery.getInfoType();
-                       if(StringUtils.isNotBlank(infoType) && infoType.equalsIgnoreCase("PSI_PREF")) {
-                           transmissionMode = delivery.getTransmissionMode();
-                           var psi = restUtils.getPsiByCode(delivery.getPsiCode());
-                           if (psi.isPresent()) {
-                               psiName = psi.get().getPsiName();
-                           }
-                       }
-                       if(StringUtils.isNotBlank(transmissionMode)) {
-                           if(transmissionMode.equalsIgnoreCase("PAPER")) {
-                               if(StringUtils.isNotBlank(orderItem.get().getEcmPsiMailBtcID())){
-                                   orderType = "Send Now";
-                               }else{
-                                   orderType = "End of July";
-                               }
-                           }else if(transmissionMode.equalsIgnoreCase("XML")) {
-                               if(delivery.getAuthUntilDate() != null){
-                                   orderType = "Ongoing updates until " + delivery.getAuthUntilDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
-                               }else{
-                                   orderType = "One-Time";
-                               }
-                           }
-                       }
-                   }
+                if(orderMap.containsKey(student.getPen())) {
+                    for(OrderEntity order: orderMap.get(student.getPen())){
+                        var orderItem = order.getOrderItemEntities().stream().findFirst();
+                        if(orderItem.isPresent()) {
+                            var deliveryInfo = orderItem.get().getDeliveryInfoEntities().stream().findFirst();
+                            if(deliveryInfo.isPresent()) {
+                                var delivery = deliveryInfo.get();
+                                var infoType = delivery.getInfoType();
+                                if(StringUtils.isNotBlank(infoType) && infoType.equalsIgnoreCase("PSI_PREF")) {
+                                    transmissionMode = delivery.getTransmissionMode();
+                                    var psi = restUtils.getPsiByCode(delivery.getPsiCode());
+                                    if (psi.isPresent()) {
+                                        psiName = psi.get().getPsiName();
+                                    }
+                                }
+                                if(StringUtils.isNotBlank(transmissionMode)) {
+                                    if(transmissionMode.equalsIgnoreCase("PAPER")) {
+                                        if(StringUtils.isNotBlank(orderItem.get().getEcmPsiMailBtcID())){
+                                            orderType = "Send Now";
+                                        }else{
+                                            orderType = "End of July";
+                                        }
+                                    }else if(transmissionMode.equalsIgnoreCase("XML")) {
+                                        if(delivery.getAuthUntilDate() != null){
+                                            orderType = "Ongoing updates until " + delivery.getAuthUntilDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+                                        }else{
+                                            orderType = "One-Time";
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    psiName = "Not Applicable";
+                    transmissionMode = "Not Applicable";
+                    orderType = "Not Applicable";
                 }
                 
                 List<String> row = prepareDataForCsv(student, psiName, transmissionMode, orderType);

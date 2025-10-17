@@ -34,4 +34,9 @@ public class OrderEntity {
     @ToString.Exclude
     @OneToMany(mappedBy = "orderEntity", fetch = FetchType.EAGER, cascade = CascadeType.DETACH, targetEntity = OrderItemEntity.class)
     Set<OrderItemEntity> orderItemEntities;
+
+    @EqualsAndHashCode.Exclude
+    @ToString.Exclude
+    @OneToMany(mappedBy = "orderEntity", fetch = FetchType.EAGER, cascade = CascadeType.DETACH, targetEntity = StudentXrefEntity.class)
+    Set<StudentXrefEntity> studentXrefEntities;
 }
