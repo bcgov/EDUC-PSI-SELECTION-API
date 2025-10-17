@@ -1,12 +1,11 @@
 package ca.bc.gov.educ.psi.selection.api.repository.v1;
 
-import ca.bc.gov.educ.psi.selection.api.model.v1.StudentPsiChoiceEntity;
+import ca.bc.gov.educ.psi.selection.api.model.v1.sts.StudentPsiChoiceEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;

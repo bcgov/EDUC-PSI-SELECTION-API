@@ -1,14 +1,19 @@
 package ca.bc.gov.educ.psi.selection.api.service.v1;
 
 import ca.bc.gov.educ.psi.selection.api.exception.PSISelectionAPIRuntimeException;
-import ca.bc.gov.educ.psi.selection.api.model.v1.PsiEntity;
-import ca.bc.gov.educ.psi.selection.api.model.v1.StudentPsiChoiceEntity;
+import ca.bc.gov.educ.psi.selection.api.model.v1.sts.OrderEntity;
+import ca.bc.gov.educ.psi.selection.api.model.v1.sts.PsiEntity;
+import ca.bc.gov.educ.psi.selection.api.model.v1.sts.StudentPsiChoiceEntity;
+import ca.bc.gov.educ.psi.selection.api.repository.v1.OrderRepository;
 import ca.bc.gov.educ.psi.selection.api.rest.RestUtils;
 import ca.bc.gov.educ.psi.selection.api.repository.v1.StudentPSIChoiceRepository;
 import ca.bc.gov.educ.psi.selection.api.struct.v1.DownloadableReportResponse;
+import ca.bc.gov.educ.psi.selection.api.struct.v1.external.gradProgram.GraduationProgramCode;
 import ca.bc.gov.educ.psi.selection.api.struct.v1.external.institute.SchoolTombstone;
 import ca.bc.gov.educ.psi.selection.api.struct.v1.external.student.Student;
+import com.nimbusds.jose.util.Pair;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 
 import java.io.BufferedWriter;
@@ -18,6 +23,7 @@ import org.apache.commons.io.output.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.Base64;
@@ -32,18 +38,18 @@ import static ca.bc.gov.educ.psi.selection.api.constants.v1.reports.PSIReportHea
 @Service
 @Slf4j
 public class PSIReportService {
-    private final StudentPSIChoiceRepository studentPSIChoiceRepository;
+    private final OrderRepository orderRepository;
     private final RestUtils restUtils;
 
-    public PSIReportService(StudentPSIChoiceRepository studentPSIChoiceRepository, RestUtils restUtils) {
-        this.studentPSIChoiceRepository = studentPSIChoiceRepository;
+    public PSIReportService(OrderRepository orderRepository, RestUtils restUtils) {
+        this.orderRepository = orderRepository;
         this.restUtils = restUtils;
     }
 
     public DownloadableReportResponse generateReport(SchoolTombstone school) {
+        var programs = restUtils.getGraduationProgramCodeList(true).stream().map(GraduationProgramCode::getProgramCode).toList();
         // Send a schoolID to grad student -> receive UUID of students based on criteria (currently just schoolID)
-        // todo need to put what is actually current in list of grad programs
-        List<UUID> studentGradRecordIDs = restUtils.getGradStudentUUIDsFromSchoolID(List.of(UUID.fromString(school.getSchoolId())), List.of("1950", "SCCP"), List.of("12", "AD"));
+        List<UUID> studentGradRecordIDs = restUtils.getGradStudentUUIDsFromSchoolID(List.of(UUID.fromString(school.getSchoolId())), programs, List.of("12", "AD"));
         log.debug("studentGradRecordIDs: {}", studentGradRecordIDs);
 
         // Get student details from student API for each studentGradRecordID UUID
@@ -51,47 +57,64 @@ public class PSIReportService {
         log.debug("Fetched {} student details", students.size());
         log.debug("first fetched student if available: {}", students.stream().findFirst().orElse(null));
 
-        // todo what is the current school year dates exactly?
-        // oct 1st 2024 -> Sept 30 2025
-        // do date logic - or grab from gdc frontend
-        List<StudentPsiChoiceEntity> studentPsiChoiceEntities = studentPSIChoiceRepository.findStudentsInAllPSIs("PAPER", LocalDate.now().withMonth(7).withDayOfMonth(1).atStartOfDay(), LocalDate.now().withMonth(9).withDayOfMonth(27).atStartOfDay());
-        log.debug("Fetched {} student PSI choice records", studentPsiChoiceEntities.size());
-        log.debug("first fetched student PSI choice record if available: {}", studentPsiChoiceEntities.stream().findFirst().orElse(null));
+        Map<String, List<Student>> studentsMap = students.stream()
+                .filter(choice -> StringUtils.isNotBlank(choice.getPen()))
+                .collect(Collectors.groupingBy(Student::getPen));
 
-        //todo from entity id on student psi choice pull in the order information from the tables below
-//        SELECT * FROM ECM_SLS_ORDR_ITM;
-//
-//        SELECT * FROM ECM_DLVRY_INF c
-//        WHERE c.info_type = 'PSI_PREF';
-
-        // todo order item can be bound on entity_id to psi choice entity
-        // todo delivery info can be bound on ecmDlvryInfId from order item to devlivery info table
-
-
-        // Group PSI choices by PEN (student number) to handle multiple choices per student
-        Map<String, List<StudentPsiChoiceEntity>> psiChoicesByPen = studentPsiChoiceEntities.stream()
-                .filter(choice -> choice.getPen() != null)
-                .collect(Collectors.groupingBy(StudentPsiChoiceEntity::getPen));
-
-        log.debug("Grouped PSI choices by PEN for {} unique students", psiChoicesByPen.size());
+        // oct 1st -> Sept 30 
+        var currentReportingPeriod = getCurrentReportingPeriod();
+        List<OrderEntity> orderEntities = orderRepository.findAllByCreateDateBetweenAndOrderDateIsNotNull(currentReportingPeriod.getLeft(), currentReportingPeriod.getRight());
+        log.debug("Fetched {} order entity records", orderEntities.size());
+        log.debug("First fetched order record if available: {}", orderEntities.stream().findFirst().orElse(null));
 
         CSVFormat csvFormat = CSVFormat.DEFAULT.builder()
-                .setHeader(SURNAME.getCode(), FIRST_NAME.getCode(), MIDDLE_NAMES.getCode(), LOCAL_ID.getCode(), PEN.getCode(), PSI_REPORT.getCode(), TRANSMISSION_MODE.getCode())
+                .setHeader(SURNAME.getCode(), FIRST_NAME.getCode(), MIDDLE_NAMES.getCode(), LOCAL_ID.getCode(), PEN.getCode(), PSI_REPORT.getCode(), TRANSMISSION_MODE.getCode(), ORDER_TYPE.getCode())
                 .build();
         try {
             ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
             BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(byteArrayOutputStream));
             CSVPrinter csvPrinter = new CSVPrinter(writer, csvFormat);
 
-            for (Student student : students) {
-                List<StudentPsiChoiceEntity> studentPsiChoices = psiChoicesByPen.getOrDefault(student.getPen(), List.of());
-                List<String> row = prepareDataForCsv(student, studentPsiChoices);
-                csvPrinter.printRecord(row);
-
-                // Debug: Print row for the dev test student
-                if ("143244747".equals(student.getPen())) {
-                    log.debug("CSV row for student with PEN 143244747: {}", row);
+            for (OrderEntity order : orderEntities) {
+                String psiName = "Not Applicable";
+                String transmissionMode = null;
+                String orderType = null;
+                Student student = new Student();
+//                var student = studentsMap.get();
+                
+                var orderItem = order.getOrderItemEntities().stream().findFirst();
+                if(orderItem.isPresent()) {
+                   var deliveryInfo = orderItem.get().getDeliveryInfoEntities().stream().findFirst();
+                   if(deliveryInfo.isPresent()) {
+                       var delivery = deliveryInfo.get();
+                       var infoType = delivery.getInfoType();
+                       if(StringUtils.isNotBlank(infoType) && infoType.equalsIgnoreCase("PSI_PREF")) {
+                           transmissionMode = delivery.getTransmissionMode();
+                           var psi = restUtils.getPsiByCode(delivery.getPsiCode());
+                           if (psi.isPresent()) {
+                               psiName = psi.get().getPsiName();
+                           }
+                       }
+                       if(StringUtils.isNotBlank(transmissionMode)) {
+                           if(transmissionMode.equalsIgnoreCase("PAPER")) {
+                               if(StringUtils.isNotBlank(orderItem.get().getEcmPsiMailBtcID())){
+                                   orderType = "Send Now";
+                               }else{
+                                   orderType = "End of July";
+                               }
+                           }else if(transmissionMode.equalsIgnoreCase("XML")) {
+                               if(delivery.getAuthUntilDate() != null){
+                                   orderType = "Ongoing updates until " + delivery.getAuthUntilDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+                               }else{
+                                   orderType = "One-Time";
+                               }
+                           }
+                       }
+                   }
                 }
+                
+                List<String> row = prepareDataForCsv(student, psiName, transmissionMode, orderType);
+                csvPrinter.printRecord(row);
             }
 
             csvPrinter.flush();
@@ -106,28 +129,27 @@ public class PSIReportService {
             throw new PSISelectionAPIRuntimeException(e.toString());
         }
     }
+    
+    private Pair<LocalDateTime, LocalDateTime> getCurrentReportingPeriod(){
+        var now = LocalDateTime.now();
+        if(now.getMonthValue() < 10){
+            return Pair.of(LocalDateTime.now().withYear(now.getYear()-1).withMonth(10).withDayOfMonth(1).withHour(0).withMinute(0).withSecond(0),
+                    LocalDateTime.now().withYear(now.getYear()).withMonth(9).withDayOfMonth(30).withHour(23).withMinute(59).withSecond(59));
+        }
+        return Pair.of(LocalDateTime.now().withYear(now.getYear()).withMonth(10).withDayOfMonth(1).withHour(0).withMinute(0).withSecond(0),
+                LocalDateTime.now().withYear(now.getYear()+1).withMonth(9).withDayOfMonth(30).withHour(23).withMinute(59).withSecond(59));
+    }
 
-    public List<String> prepareDataForCsv(Student student, List<StudentPsiChoiceEntity> psiChoices) {
-        String psiNames = psiChoices.stream()
-                .map(choice -> restUtils.getPsiByCode(choice.getPsiCode())
-                        .map(PsiEntity::getPsiName)
-                        .orElse("Unknown PSI"))
-                .collect(Collectors.joining(";"));
-
-        String transmissionModes = psiChoices.stream()
-                .map(choice -> restUtils.getPsiByCode(choice.getPsiCode())
-                        .map(PsiEntity::getTransmissionMode)
-                        .orElse(""))
-                .collect(Collectors.joining(";"));
-
+    public List<String> prepareDataForCsv(Student student, String psiName, String transmissionMode, String orderType) {
         return Arrays.asList(
                 student.getLegalLastName(),
                 student.getLegalFirstName(),
                 student.getLegalMiddleNames(),
                 student.getLocalID(),
                 student.getPen(),
-                psiNames,
-                transmissionModes
+                psiName,
+                transmissionMode,
+                orderType
         );
     }
 }

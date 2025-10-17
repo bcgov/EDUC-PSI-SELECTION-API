@@ -1,6 +1,6 @@
 package ca.bc.gov.educ.psi.selection.api.rest;
 
-import ca.bc.gov.educ.psi.selection.api.model.v1.PsiEntity;
+import ca.bc.gov.educ.psi.selection.api.model.v1.sts.PsiEntity;
 import ca.bc.gov.educ.psi.selection.api.properties.ApplicationProperties;
 import ca.bc.gov.educ.psi.selection.api.repository.v1.PSIRepository;
 import ca.bc.gov.educ.psi.selection.api.struct.v1.external.institute.SchoolTombstone;

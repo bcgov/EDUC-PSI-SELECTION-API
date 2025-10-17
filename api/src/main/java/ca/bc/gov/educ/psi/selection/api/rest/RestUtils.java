@@ -1,9 +1,10 @@
 package ca.bc.gov.educ.psi.selection.api.rest;
 
 
-import ca.bc.gov.educ.psi.selection.api.model.v1.PsiEntity;
+import ca.bc.gov.educ.psi.selection.api.model.v1.sts.PsiEntity;
 import ca.bc.gov.educ.psi.selection.api.properties.ApplicationProperties;
 import ca.bc.gov.educ.psi.selection.api.repository.v1.PSIRepository;
+import ca.bc.gov.educ.psi.selection.api.struct.v1.external.gradProgram.GraduationProgramCode;
 import ca.bc.gov.educ.psi.selection.api.struct.v1.external.gradStudent.StudentSearchRequest;
 import ca.bc.gov.educ.psi.selection.api.struct.v1.external.institute.SchoolTombstone;
 import ca.bc.gov.educ.psi.selection.api.struct.v1.external.student.Student;
@@ -24,6 +25,8 @@ import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.net.URI;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -43,8 +46,10 @@ public class RestUtils {
     private final Map<String, SchoolTombstone> schoolMap = new ConcurrentHashMap<>();
     private final Map<String, PsiEntity> psiMap = new ConcurrentHashMap<>();
     private final Map<String, List<UUID>> independentAuthorityToSchoolIDMap = new ConcurrentHashMap<>();
+    private final Map<String, GraduationProgramCode> gradProgramCodeMap = new ConcurrentHashMap<>();
     private final ReadWriteLock schoolLock = new ReentrantReadWriteLock();
     private final ReadWriteLock psiLock = new ReentrantReadWriteLock();
+    private final ReadWriteLock gradProgramLock = new ReentrantReadWriteLock();
     private final WebClient webClient;
     private final PSIRepository pSIRepository;
 
@@ -71,16 +76,50 @@ public class RestUtils {
     private void initialize() {
         this.populatePsiMap();
         this.populateSchoolMap();
+        this.populateGradProgramCodesMap();
+    }
+    
+    public void populateGradProgramCodesMap() {
+        val writeLock = this.gradProgramLock.writeLock();
+        try {
+            writeLock.lock();
+            for (val program : this.getGraduationProgramCodes()) {
+                program.setEffectiveDate(!StringUtils.isBlank(program.getEffectiveDate()) ? LocalDateTime.parse(program.getEffectiveDate(), DateTimeFormatter.ISO_OFFSET_DATE_TIME).toString() : null);
+                program.setExpiryDate(!StringUtils.isBlank(program.getExpiryDate()) ? LocalDateTime.parse(program.getExpiryDate(), DateTimeFormatter.ISO_OFFSET_DATE_TIME).toString() : null);
+                this.gradProgramCodeMap.put(program.getProgramCode(), program);
+            }
+        } catch (Exception ex) {
+            log.error("Unable to load map cache grad program codes {}", ex);
+        } finally {
+            writeLock.unlock();
+        }
+        log.info("Loaded  {} grad program codes to memory", this.gradProgramCodeMap.values().size());
+        log.debug(this.gradProgramCodeMap.values().toString());
     }
 
-      private URI getSchoolHistoryURI(String criterion){
-        return UriComponentsBuilder.fromHttpUrl(this.props.getInstituteApiURL() + "/school/history/paginated")
-                .queryParam("pageNumber", "0")
-                .queryParam("pageSize", PAGE_SIZE_VALUE)
-                .queryParam("sort", "{\"createDate\":\"DESC\"}")
-                .queryParam("searchCriteriaList", criterion).build().toUri();
-      }
+    private List<GraduationProgramCode> getGraduationProgramCodes() {
+        log.info("Calling Grad api to load graduation program codes to memory");
+        return this.webClient.get()
+                .uri(this.props.getGradProgramApiURL() + "/programs")
+                .header(CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                .retrieve()
+                .bodyToFlux(GraduationProgramCode.class)
+                .collectList()
+                .block();
+    }
 
+    public List<GraduationProgramCode> getGraduationProgramCodeList(boolean activeOnly) {
+        if (this.gradProgramCodeMap.isEmpty()) {
+            log.info("Graduation Program Code map is empty reloading them");
+            this.populateGradProgramCodesMap();
+        }
+        if(activeOnly){
+            return this.gradProgramCodeMap.values().stream().filter(code -> StringUtils.isBlank(code.getExpiryDate()) || LocalDateTime.parse(code.getExpiryDate()).isAfter(LocalDateTime.now())).toList();
+        }
+
+        return this.gradProgramCodeMap.values().stream().toList();
+    }
+    
     private List<SchoolTombstone> getSchools() {
         log.info("Calling Institute api to load schools to memory");
         return this.webClient.get()

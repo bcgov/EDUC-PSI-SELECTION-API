@@ -27,6 +27,9 @@ public class ApplicationProperties {
   @Value("${nats.connectionName}")
   private String connectionName;
 
+  @Value("${url.api.grad.program}")
+  private String gradProgramApiURL;
+
   @Value("${url.token}")
   private String tokenURL;
 

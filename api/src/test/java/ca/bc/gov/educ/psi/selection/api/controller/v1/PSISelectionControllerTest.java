@@ -2,8 +2,8 @@ package ca.bc.gov.educ.psi.selection.api.controller.v1;
 
 import ca.bc.gov.educ.psi.selection.api.PSISelectionApiResourceApplication;
 import ca.bc.gov.educ.psi.selection.api.constants.v1.URL;
-import ca.bc.gov.educ.psi.selection.api.model.v1.PsiEntity;
-import ca.bc.gov.educ.psi.selection.api.model.v1.StudentPsiChoiceEntity;
+import ca.bc.gov.educ.psi.selection.api.model.v1.sts.PsiEntity;
+import ca.bc.gov.educ.psi.selection.api.model.v1.sts.StudentPsiChoiceEntity;
 import ca.bc.gov.educ.psi.selection.api.repository.v1.PSIRepository;
 import ca.bc.gov.educ.psi.selection.api.repository.v1.StudentPSIChoiceRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -14,18 +14,15 @@ import org.mockito.MockitoAnnotations;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.MvcResult;
 
 import java.math.BigInteger;
 import java.time.LocalDateTime;
 
 import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.oidcLogin;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.asyncDispatch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;

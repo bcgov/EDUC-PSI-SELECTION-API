@@ -12,6 +12,7 @@ public enum PSIReportHeaders {
     PEN("PEN"),
     PSI_NAME("PSI Name"),
     TRANSMISSION_MODE("Transmission Mode"),
+    ORDER_TYPE("Order Type"),
     ;
 
     private final String code;

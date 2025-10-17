@@ -1,4 +1,4 @@
-package ca.bc.gov.educ.psi.selection.api.model.v1;
+package ca.bc.gov.educ.psi.selection.api.model.v1.sts;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
