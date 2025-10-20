@@ -19,7 +19,7 @@ public class StudentXrefEntity {
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
     @ManyToOne(optional = false, targetEntity = OrderEntity.class)
-    @JoinColumn(name = "USER_PROFILE_ENTITY_ID", referencedColumnName = "USER_PROFILE_ENTITY_ID", updatable = false)
+    @JoinColumn(name = "USER_PROFILE_ENTITY_ID", referencedColumnName = "USERPROFILE_ENTITY_ID", updatable = false)
     OrderEntity orderEntity;
 
     @Column(name = "STUD_PEN_ID")
