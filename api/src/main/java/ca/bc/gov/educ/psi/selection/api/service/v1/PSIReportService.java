@@ -2,38 +2,31 @@ package ca.bc.gov.educ.psi.selection.api.service.v1;
 
 import ca.bc.gov.educ.psi.selection.api.exception.PSISelectionAPIRuntimeException;
 import ca.bc.gov.educ.psi.selection.api.model.v1.sts.OrderEntity;
-import ca.bc.gov.educ.psi.selection.api.model.v1.sts.PsiEntity;
-import ca.bc.gov.educ.psi.selection.api.model.v1.sts.StudentPsiChoiceEntity;
 import ca.bc.gov.educ.psi.selection.api.repository.v1.OrderRepository;
 import ca.bc.gov.educ.psi.selection.api.rest.RestUtils;
-import ca.bc.gov.educ.psi.selection.api.repository.v1.StudentPSIChoiceRepository;
 import ca.bc.gov.educ.psi.selection.api.struct.v1.DownloadableReportResponse;
 import ca.bc.gov.educ.psi.selection.api.struct.v1.external.gradProgram.GraduationProgramCode;
 import ca.bc.gov.educ.psi.selection.api.struct.v1.external.institute.SchoolTombstone;
 import ca.bc.gov.educ.psi.selection.api.struct.v1.external.student.Student;
 import com.nimbusds.jose.util.Pair;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVPrinter;
+import org.apache.commons.io.output.ByteArrayOutputStream;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 
 import java.io.BufferedWriter;
-import org.apache.commons.csv.CSVFormat;
-import org.apache.commons.csv.CSVPrinter;
-import org.apache.commons.io.output.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Arrays;
-import java.util.Base64;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
-import static ca.bc.gov.educ.psi.selection.api.constants.v1.reports.ReportTypeCodes.PSI_REPORT;
 import static ca.bc.gov.educ.psi.selection.api.constants.v1.reports.PSIReportHeaders.*;
+import static ca.bc.gov.educ.psi.selection.api.constants.v1.reports.ReportTypeCodes.PSI_REPORT;
 
 @Service
 @Slf4j
@@ -83,30 +76,27 @@ public class PSIReportService {
                     for(OrderEntity order: orderMap.get(student.getPen())){
                         var orderItem = order.getOrderItemEntities().stream().findFirst();
                         if(orderItem.isPresent()) {
-                            var deliveryInfo = orderItem.get().getDeliveryInfoEntities().stream().findFirst();
-                            if(deliveryInfo.isPresent()) {
-                                var delivery = deliveryInfo.get();
-                                var infoType = delivery.getInfoType();
-                                if(StringUtils.isNotBlank(infoType) && infoType.equalsIgnoreCase("PSI_PREF")) {
-                                    transmissionMode = delivery.getTransmissionMode();
-                                    var psi = restUtils.getPsiByCode(delivery.getPsiCode());
-                                    if (psi.isPresent()) {
-                                        psiName = psi.get().getPsiName();
-                                    }
+                            var delivery = orderItem.get().getDeliveryInfoEntity();
+                            var infoType = delivery.getInfoType();
+                            if(StringUtils.isNotBlank(infoType) && infoType.equalsIgnoreCase("PSI_PREF")) {
+                                transmissionMode = delivery.getTransmissionMode();
+                                var psi = restUtils.getPsiByCode(delivery.getPsiCode());
+                                if (psi.isPresent()) {
+                                    psiName = psi.get().getPsiName();
                                 }
-                                if(StringUtils.isNotBlank(transmissionMode)) {
-                                    if(transmissionMode.equalsIgnoreCase("PAPER")) {
-                                        if(StringUtils.isNotBlank(orderItem.get().getEcmPsiMailBtcID())){
-                                            orderType = "Send Now";
-                                        }else{
-                                            orderType = "End of July";
-                                        }
-                                    }else if(transmissionMode.equalsIgnoreCase("XML")) {
-                                        if(delivery.getAuthUntilDate() != null){
-                                            orderType = "Ongoing updates until " + delivery.getAuthUntilDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
-                                        }else{
-                                            orderType = "One-Time";
-                                        }
+                            }
+                            if(StringUtils.isNotBlank(transmissionMode)) {
+                                if (transmissionMode.equalsIgnoreCase("PAPER")) {
+                                    if (StringUtils.isNotBlank(orderItem.get().getEcmPsiMailBtcID())) {
+                                        orderType = "Send Now";
+                                    } else {
+                                        orderType = "End of July";
+                                    }
+                                } else if (transmissionMode.equalsIgnoreCase("XML")) {
+                                    if (delivery.getAuthUntilDate() != null) {
+                                        orderType = "Ongoing updates until " + delivery.getAuthUntilDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+                                    } else {
+                                        orderType = "One-Time";
                                     }
                                 }
                             }

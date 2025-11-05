@@ -3,8 +3,6 @@ package ca.bc.gov.educ.psi.selection.api.model.v1.sts;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.time.LocalDateTime;
-
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

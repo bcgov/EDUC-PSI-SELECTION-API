@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.Set;
 
 @Data
 @NoArgsConstructor
@@ -16,11 +17,10 @@ public class DeliveryInfoEntity {
     @Column(name = "ECM_DLVRY_INF_ID")
     private String ecmDlvryInfId;
 
-    @ToString.Exclude
     @EqualsAndHashCode.Exclude
-    @ManyToOne(optional = false, targetEntity = OrderItemEntity.class)
-    @JoinColumn(name = "ECM_SLS_ORDR_ITM_ID", referencedColumnName = "ECM_SLS_ORDR_ITM_ID", updatable = false)
-    OrderItemEntity orderItemEntity;
+    @ToString.Exclude
+    @OneToMany(mappedBy = "deliveryInfoEntity", fetch = FetchType.EAGER, cascade = CascadeType.DETACH, targetEntity = OrderItemEntity.class)
+    Set<OrderItemEntity> orderItemEntities;
 
     @Column(name = "INFO_TYPE")
     private String infoType;

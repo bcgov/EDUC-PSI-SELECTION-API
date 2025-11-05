@@ -7,8 +7,6 @@ import ca.bc.gov.educ.psi.selection.api.service.v1.PSIReportService;
 import ca.bc.gov.educ.psi.selection.api.struct.v1.DownloadableReportResponse;
 import ca.bc.gov.educ.psi.selection.api.struct.v1.external.institute.SchoolTombstone;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Optional;

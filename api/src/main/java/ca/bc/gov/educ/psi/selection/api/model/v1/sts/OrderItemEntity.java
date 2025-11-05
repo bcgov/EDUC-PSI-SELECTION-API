@@ -25,14 +25,12 @@ public class OrderItemEntity {
     @Column(name = "ORDER_ITM_STATUS")
     private String orderItemStatus;
 
-    @Column(name = "ECM_DLVRY_INF_ID")
-    private String ecmDlvryInfID;
-
     @Column(name = "ECM_PSI_MAIL_BTC_ID")
     private String ecmPsiMailBtcID;
 
-    @EqualsAndHashCode.Exclude
     @ToString.Exclude
-    @OneToMany(mappedBy = "orderItemEntity", fetch = FetchType.EAGER, cascade = CascadeType.DETACH, targetEntity = DeliveryInfoEntity.class)
-    Set<DeliveryInfoEntity> deliveryInfoEntities;
+    @EqualsAndHashCode.Exclude
+    @ManyToOne(optional = false, targetEntity = DeliveryInfoEntity.class)
+    @JoinColumn(name = "ECM_DLVRY_INF_ID", referencedColumnName = "ECM_DLVRY_INF_ID", updatable = false)
+    DeliveryInfoEntity deliveryInfoEntity;
 }
