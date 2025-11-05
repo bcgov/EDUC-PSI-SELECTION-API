@@ -182,7 +182,7 @@ public class RestUtils {
 
     public List<UUID> getGradStudentUUIDsFromSchoolID(List<UUID> schoolIDs, List<String> programs, List<String> grades) {
         log.debug("Calling Grad api to fetch students for PSI report with schoolIDs: {}, programs: {}, grades: {}", schoolIDs, programs, grades);
-        StudentSearchRequest searchRequest = StudentSearchRequest.builder().schoolIds(schoolIDs).programs(programs).grades(grades).build();
+        StudentSearchRequest searchRequest = StudentSearchRequest.builder().schoolIds(schoolIDs).statuses(List.of("CUR")).programs(programs).grades(grades).build();
         return this.webClient.post()
                 .uri(this.props.getGradStudentApiURL() + "/gradstudentbysearchcriteria")
                 .header(CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
