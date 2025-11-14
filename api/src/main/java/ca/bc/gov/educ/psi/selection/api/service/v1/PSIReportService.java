@@ -100,16 +100,23 @@ public class PSIReportService {
                                     }
                                 }
                             }
+                        } else {
+                            psiName = "Not Applicable";
+                            transmissionMode = "Not Applicable";
+                            orderType = "Not Applicable";
                         }
+
+                        List<String> row = prepareDataForCsv(student, psiName, transmissionMode, orderType);
+                        csvPrinter.printRecord(row);
                     }
                 } else {
                     psiName = "Not Applicable";
                     transmissionMode = "Not Applicable";
                     orderType = "Not Applicable";
+
+                    List<String> row = prepareDataForCsv(student, psiName, transmissionMode, orderType);
+                    csvPrinter.printRecord(row);
                 }
-                
-                List<String> row = prepareDataForCsv(student, psiName, transmissionMode, orderType);
-                csvPrinter.printRecord(row);
             }
 
             csvPrinter.flush();
