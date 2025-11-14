@@ -20,7 +20,10 @@ public class StudentXrefEntity {
     @JoinColumn(name = "USER_PROFILE_ENTITY_ID", referencedColumnName = "USERPROFILE_ENTITY_ID", updatable = false)
     OrderEntity orderEntity;
 
-    @Column(name = "STUD_PEN_ID")
-    private String studentPen;
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    @ManyToOne(optional = false, targetEntity = StudentPENEntity.class)
+    @JoinColumn(name = "STUD_PEN_ID", referencedColumnName = "STUD_PEN_ID", updatable = false)
+    StudentPENEntity studentPENEntity;
     
 }

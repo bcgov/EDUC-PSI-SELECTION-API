@@ -57,8 +57,8 @@ public class PSIReportService {
         log.debug("First fetched order record if available: {}", orderEntities.stream().findFirst().orElse(null));
 
         Map<String, List<OrderEntity>> orderMap = orderEntities.stream()
-                .filter(order -> !order.getStudentXrefEntities().isEmpty())
-                .collect(Collectors.groupingBy(order -> order.getStudentXrefEntities().stream().findFirst().get().getStudentPen()));
+                .filter(order -> !order.getStudentXrefEntities().isEmpty() && order.getStudentXrefEntities().stream().findFirst().get().getStudentPENEntity() != null)
+                .collect(Collectors.groupingBy(order -> order.getStudentXrefEntities().stream().findFirst().get().getStudentPENEntity().getStudentPen()));
 
         CSVFormat csvFormat = CSVFormat.DEFAULT.builder()
                 .setHeader(SURNAME.getCode(), FIRST_NAME.getCode(), MIDDLE_NAMES.getCode(), LOCAL_ID.getCode(), PEN.getCode(), PSI_REPORT.getCode(), TRANSMISSION_MODE.getCode(), ORDER_TYPE.getCode())
