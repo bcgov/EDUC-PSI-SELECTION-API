@@ -61,7 +61,7 @@ public class PSIReportService {
                 .collect(Collectors.groupingBy(order -> order.getStudentXrefEntities().stream().findFirst().get().getStudentPENEntity().getStudentPen()));
 
         CSVFormat csvFormat = CSVFormat.DEFAULT.builder()
-                .setHeader(SURNAME.getCode(), FIRST_NAME.getCode(), MIDDLE_NAMES.getCode(), LOCAL_ID.getCode(), PEN.getCode(), PSI_REPORT.getCode(), TRANSMISSION_MODE.getCode(), ORDER_TYPE.getCode())
+                .setHeader(SURNAME.getCode(), FIRST_NAME.getCode(), MIDDLE_NAMES.getCode(), LOCAL_ID.getCode(), PEN.getCode(), ORDER_PLACED.getCode(), PSI_NAME.getCode(), TRANSMISSION_MODE.getCode(), ORDER_TYPE.getCode())
                 .build();
         try {
             ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
@@ -143,12 +143,14 @@ public class PSIReportService {
     }
 
     public List<String> prepareDataForCsv(Student student, String psiName, String transmissionMode, String orderType) {
+        var orderPlaced = StringUtils.isBlank(orderType) || orderType.equalsIgnoreCase("Not Applicable") ? "N" : "Y";
         return Arrays.asList(
                 student.getLegalLastName(),
                 student.getLegalFirstName(),
                 student.getLegalMiddleNames(),
                 student.getLocalID(),
                 student.getPen(),
+                orderPlaced,
                 psiName,
                 transmissionMode,
                 orderType

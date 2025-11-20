@@ -5,15 +5,15 @@ import lombok.Getter;
 @Getter
 public enum PSIReportHeaders {
 
-    SURNAME("SURNAME"),
+    SURNAME("Surname"),
     FIRST_NAME("First Name"),
     MIDDLE_NAMES("Middle Name"),
     LOCAL_ID("Local ID"),
     PEN("PEN"),
+    ORDER_PLACED("Order Placed"),
     PSI_NAME("PSI Name"),
     TRANSMISSION_MODE("Transmission Mode"),
-    ORDER_TYPE("Order Type"),
-    ;
+    ORDER_TYPE("Order Type");
 
     private final String code;
     PSIReportHeaders(String code) { this.code = code; }
