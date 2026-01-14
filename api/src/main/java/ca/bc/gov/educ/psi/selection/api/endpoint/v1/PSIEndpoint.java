@@ -18,7 +18,7 @@ import java.util.concurrent.CompletableFuture;
 public interface PSIEndpoint {
 
     @GetMapping(URL.PAGINATED)
-    @PreAuthorize("hasAuthority('SCOPE_READ_PSI_SELECTION')")
+    @PreAuthorize("hasAuthority('SCOPE_READ_PSI')")
     @Transactional(readOnly = true)
     @ApiResponses(value = {@ApiResponse(responseCode = "200", description = "OK"), @ApiResponse(responseCode = "400", description = "BAD REQUEST"), @ApiResponse(responseCode = "500", description = "INTERNAL SERVER ERROR.")})
     @Tag(name = "PSI Entity", description = "Paginated endpoint for PSI entity.")
