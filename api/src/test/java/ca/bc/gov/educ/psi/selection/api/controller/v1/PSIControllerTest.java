@@ -7,6 +7,9 @@ import ca.bc.gov.educ.psi.selection.api.repository.v1.PSIRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.MockitoAnnotations;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -15,7 +18,9 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
-import static org.hamcrest.Matchers.hasSize;
+import java.util.stream.Stream;
+
+import static org.hamcrest.Matchers.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.oidcLogin;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
@@ -31,207 +36,97 @@ public class PSIControllerTest {
   private MockMvc mockMvc;
 
   @Autowired
-  PSIRepository psiRepository;
+  private PSIRepository psiRepository;
 
   @BeforeEach
-  public void before(){
+  public void before() {
     MockitoAnnotations.openMocks(this);
   }
-  
+
   @AfterEach
   public void after() {
     this.psiRepository.deleteAll();
   }
 
   @Test
-  void testGetPsiEntities_GivenNoParameters_ShouldReturnAllEntities() throws Exception {
-    final GrantedAuthority grantedAuthority = () -> "SCOPE_READ_PSI";
+  void testFindAllPaginated_GivenNoSearchCriteria_ShouldReturnAllPSIs() throws Exception {
+    final GrantedAuthority grantedAuthority = () -> "SCOPE_READ_PSI_SELECTION";
     final var mockAuthority = oidcLogin().authorities(grantedAuthority);
 
-    psiRepository.save(createMockPSI("MA001", "Test PSI 1", "PAPER", "CSL001", "Y"));
-    psiRepository.save(createMockPSI("MA002", "Test PSI 2", "ELECTRONIC", "CSL002", "N"));
+    PsiEntity psi1 = createMockPSI("001", "Test PSI 1", "Y", "PAPER", "CSL001");
+    PsiEntity psi2 = createMockPSI("002", "Test PSI 2", "Y", "ELECTRONIC", "CSL002");
+    psiRepository.save(psi1);
+    psiRepository.save(psi2);
 
     this.mockMvc.perform(
-                    get(URL.PSI_URL + "/search").with(mockAuthority))
-            .andDo(print())
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$", hasSize(2)));
+            get(URL.PSI_URL + URL.PAGINATED)
+                .param("pageNumber", "0")
+                .param("pageSize", "10")
+                .param("sort", "{\"psiCode\":\"ASC\"}")
+                .with(mockAuthority))
+        .andDo(print())
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.content", hasSize(2)))
+        .andExpect(jsonPath("$.totalElements").value(2))
+        .andExpect(jsonPath("$.totalPages").value(1))
+        .andExpect(jsonPath("$.content[0].psiCode").value("001"))
+        .andExpect(jsonPath("$.content[1].psiCode").value("002"));
   }
 
-  @Test
-  void testGetPsiEntities_GivenPsiCode_ShouldReturnMatchingEntity() throws Exception {
-    final GrantedAuthority grantedAuthority = () -> "SCOPE_READ_PSI";
+  @ParameterizedTest
+  @MethodSource("searchCriteriaProvider")
+  void testFindAllPaginated_GivenSearchCriteria_ShouldReturnFilteredResults(
+      String searchCriteriaList, String expectedPsiCode, int expectedCount) throws Exception {
+    final GrantedAuthority grantedAuthority = () -> "SCOPE_READ_PSI_SELECTION";
     final var mockAuthority = oidcLogin().authorities(grantedAuthority);
 
-    psiRepository.save(createMockPSI("MA001", "Test PSI 1", "PAPER", "CSL001", "Y"));
-    psiRepository.save(createMockPSI("MA002", "Test PSI 2", "ELECTRONIC", "CSL002", "N"));
+    PsiEntity psi1 = createMockPSI("001", "South University", "Y", "PAPER", "CSL001");
+    PsiEntity psi2 = createMockPSI("002", "North College", "N", "ELECTRONIC", "CSL002");
+    PsiEntity psi3 = createMockPSI("003", "South College", "Y", "PAPER", "CSL003");
+    psiRepository.save(psi1);
+    psiRepository.save(psi2);
+    psiRepository.save(psi3);
 
     this.mockMvc.perform(
-                    get(URL.PSI_URL + "/search?psiCode=MA001").with(mockAuthority))
-            .andDo(print())
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$", hasSize(1)))
-            .andExpect(jsonPath("$[0].psiCode").value("MA001"))
-            .andExpect(jsonPath("$[0].psiName").value("Test PSI 1"));
+            get(URL.PSI_URL + URL.PAGINATED)
+                .param("pageNumber", "0")
+                .param("pageSize", "10")
+                .param("sort", "{\"psiCode\":\"ASC\"}")
+                .param("searchCriteriaList", searchCriteriaList)
+                .with(mockAuthority))
+        .andDo(print())
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.content", hasSize(expectedCount)))
+        .andExpect(jsonPath("$.totalElements").value(expectedCount))
+        .andExpect(jsonPath("$.content[0].psiCode").value(expectedPsiCode));
   }
 
-  @Test
-  void testGetPsiEntities_GivenPsiCodePrefix_ShouldReturnMatchingEntities() throws Exception {
-    final GrantedAuthority grantedAuthority = () -> "SCOPE_READ_PSI";
-    final var mockAuthority = oidcLogin().authorities(grantedAuthority);
-
-    psiRepository.save(createMockPSI("MA001", "Test PSI 1", "PAPER", "CSL001", "Y"));
-    psiRepository.save(createMockPSI("MA002", "Test PSI 2", "ELECTRONIC", "CSL002", "N"));
-    psiRepository.save(createMockPSI("BC001", "Test PSI 3", "PAPER", "CSL003", "Y"));
-
-    // Service does "starts with" search, so "MA" will match "MA001" and "MA002"
-    this.mockMvc.perform(
-                    get(URL.PSI_URL + "/search?psiCode=MA").with(mockAuthority))
-            .andDo(print())
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$", hasSize(2)))
-            .andExpect(jsonPath("$[0].psiCode").value("MA001"))
-            .andExpect(jsonPath("$[1].psiCode").value("MA002"));
+  private static Stream<Arguments> searchCriteriaProvider() {
+    return Stream.of(
+        Arguments.of(
+            "[{\"condition\":\"AND\",\"searchCriteriaList\":[{\"key\":\"psiCode\",\"value\":\"001\",\"operation\":\"starts_with_ignore_case\",\"valueType\":\"STRING\",\"condition\":\"AND\"}]}]",
+            "001", 1),
+        Arguments.of(
+            "[{\"condition\":\"AND\",\"searchCriteriaList\":[{\"key\":\"psiName\",\"value\":\"South\",\"operation\":\"like_ignore_case\",\"valueType\":\"STRING\",\"condition\":\"AND\"}]}]",
+            "001", 2),
+        Arguments.of(
+            "[{\"condition\":\"AND\",\"searchCriteriaList\":[" +
+                "{\"key\":\"psiName\",\"value\":\"South\",\"operation\":\"like_ignore_case\",\"valueType\":\"STRING\",\"condition\":\"AND\"}," +
+                "{\"key\":\"openFlag\",\"value\":\"Y\",\"operation\":\"eq\",\"valueType\":\"STRING\",\"condition\":\"AND\"}]}]",
+            "001", 2),
+        Arguments.of(
+            "[{\"condition\":\"AND\",\"searchCriteriaList\":[{\"key\":\"openFlag\",\"value\":\"N\",\"operation\":\"eq\",\"valueType\":\"STRING\",\"condition\":\"AND\"}]}]",
+            "002", 1)
+    );
   }
 
-  @Test
-  void testGetPsiEntities_GivenTransmissionMode_ShouldReturnMatchingEntities() throws Exception {
-    final GrantedAuthority grantedAuthority = () -> "SCOPE_READ_PSI";
-    final var mockAuthority = oidcLogin().authorities(grantedAuthority);
-
-    psiRepository.save(createMockPSI("MA001", "Test PSI 1", "PAPER", "CSL001", "Y"));
-    psiRepository.save(createMockPSI("MA002", "Test PSI 2", "ELECTRONIC", "CSL002", "N"));
-    psiRepository.save(createMockPSI("MA003", "Test PSI 3", "PAPER", "CSL003", "Y"));
-
-    this.mockMvc.perform(
-                    get(URL.PSI_URL + "/search?transmissionMode=PAPER").with(mockAuthority))
-            .andDo(print())
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$", hasSize(2)))
-            .andExpect(jsonPath("$[0].transmissionMode").value("PAPER"))
-            .andExpect(jsonPath("$[1].transmissionMode").value("PAPER"));
-  }
-
-  @Test
-  void testGetPsiEntities_GivenPsiName_ShouldReturnMatchingEntities() throws Exception {
-    final GrantedAuthority grantedAuthority = () -> "SCOPE_READ_PSI";
-    final var mockAuthority = oidcLogin().authorities(grantedAuthority);
-
-    psiRepository.save(createMockPSI("MA001", "University of Test", "PAPER", "CSL001", "Y"));
-    psiRepository.save(createMockPSI("MA002", "Test College", "ELECTRONIC", "CSL002", "N"));
-    psiRepository.save(createMockPSI("MA003", "Another Institution", "PAPER", "CSL003", "Y"));
-
-    this.mockMvc.perform(
-                    get(URL.PSI_URL + "/search?psiName=Test").with(mockAuthority))
-            .andDo(print())
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$", hasSize(2)));
-  }
-
-  @Test
-  void testGetPsiEntities_GivenCslCode_ShouldReturnMatchingEntities() throws Exception {
-    final GrantedAuthority grantedAuthority = () -> "SCOPE_READ_PSI";
-    final var mockAuthority = oidcLogin().authorities(grantedAuthority);
-
-    psiRepository.save(createMockPSI("MA001", "Test PSI 1", "PAPER", "CSL001", "Y"));
-    psiRepository.save(createMockPSI("MA002", "Test PSI 2", "ELECTRONIC", "CSL002", "N"));
-    psiRepository.save(createMockPSI("MA003", "Test PSI 3", "PAPER", "CSL001", "Y"));
-
-    this.mockMvc.perform(
-                    get(URL.PSI_URL + "/search?cslCode=CSL001").with(mockAuthority))
-            .andDo(print())
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$", hasSize(2)))
-            .andExpect(jsonPath("$[0].cslCode").value("CSL001"))
-            .andExpect(jsonPath("$[1].cslCode").value("CSL001"));
-  }
-
-  @Test
-  void testGetPsiEntities_GivenOpenFlag_ShouldReturnMatchingEntities() throws Exception {
-    final GrantedAuthority grantedAuthority = () -> "SCOPE_READ_PSI";
-    final var mockAuthority = oidcLogin().authorities(grantedAuthority);
-
-    psiRepository.save(createMockPSI("MA001", "Test PSI 1", "PAPER", "CSL001", "Y"));
-    psiRepository.save(createMockPSI("MA002", "Test PSI 2", "ELECTRONIC", "CSL002", "N"));
-    psiRepository.save(createMockPSI("MA003", "Test PSI 3", "PAPER", "CSL003", "Y"));
-
-    this.mockMvc.perform(
-                    get(URL.PSI_URL + "/search?openFlag=Y").with(mockAuthority))
-            .andDo(print())
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$", hasSize(2)))
-            .andExpect(jsonPath("$[0].openFlag").value("Y"))
-            .andExpect(jsonPath("$[1].openFlag").value("Y"));
-  }
-
-  @Test
-  void testGetPsiEntities_GivenMultipleParameters_ShouldReturnMatchingEntities() throws Exception {
-    final GrantedAuthority grantedAuthority = () -> "SCOPE_READ_PSI";
-    final var mockAuthority = oidcLogin().authorities(grantedAuthority);
-
-    psiRepository.save(createMockPSI("MA001", "Test PSI 1", "PAPER", "CSL001", "Y"));
-    psiRepository.save(createMockPSI("MA002", "Test PSI 2", "ELECTRONIC", "CSL002", "N"));
-    psiRepository.save(createMockPSI("MA003", "Test PSI 3", "PAPER", "CSL001", "Y"));
-
-    this.mockMvc.perform(
-                    get(URL.PSI_URL + "/search?transmissionMode=PAPER&openFlag=Y").with(mockAuthority))
-            .andDo(print())
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$", hasSize(2)))
-            .andExpect(jsonPath("$[0].transmissionMode").value("PAPER"))
-            .andExpect(jsonPath("$[0].openFlag").value("Y"))
-            .andExpect(jsonPath("$[1].transmissionMode").value("PAPER"))
-            .andExpect(jsonPath("$[1].openFlag").value("Y"));
-  }
-
-  @Test
-  void testGetPsiEntities_GivenNoMatchingResults_ShouldReturnEmptyList() throws Exception {
-    final GrantedAuthority grantedAuthority = () -> "SCOPE_READ_PSI";
-    final var mockAuthority = oidcLogin().authorities(grantedAuthority);
-
-    psiRepository.save(createMockPSI("MA001", "Test PSI 1", "PAPER", "CSL001", "Y"));
-
-    this.mockMvc.perform(
-                    get(URL.PSI_URL + "/search?psiCode=INVALID").with(mockAuthority))
-            .andDo(print())
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$", hasSize(0)));
-  }
-
-  @Test
-  void testGetPsiEntities_GivenNoAuthorization_ShouldReturnForbidden() throws Exception {
-    this.mockMvc.perform(
-                    get(URL.PSI_URL + "/search"))
-            .andDo(print())
-            .andExpect(status().isUnauthorized());
-  }
-
-  @Test
-  void testGetPsiEntities_GivenInvalidScope_ShouldReturnForbidden() throws Exception {
-    final GrantedAuthority grantedAuthority = () -> "SCOPE_INVALID";
-    final var mockAuthority = oidcLogin().authorities(grantedAuthority);
-
-    this.mockMvc.perform(
-                    get(URL.PSI_URL + "/search").with(mockAuthority))
-            .andDo(print())
-            .andExpect(status().isForbidden());
-  }
-
-  private PsiEntity createMockPSI(String psiCode, String psiName, String transmissionMode, 
-                                   String cslCode, String openFlag){
+  private PsiEntity createMockPSI(String psiCode, String psiName, String openFlag, String transmissionMode, String cslCode) {
     PsiEntity psiEntity = new PsiEntity();
     psiEntity.setPsiCode(psiCode);
     psiEntity.setPsiName(psiName);
+    psiEntity.setOpenFlag(openFlag);
     psiEntity.setTransmissionMode(transmissionMode);
     psiEntity.setCslCode(cslCode);
-    psiEntity.setOpenFlag(openFlag);
-    psiEntity.setAddress1("123 Test St");
-    psiEntity.setCity("Vancouver");
-    psiEntity.setProvinceCode("BC");
-    psiEntity.setCountryCode("CA");
-    psiEntity.setPostal("V6B 1A1");
-    
     return psiEntity;
   }
-
 }

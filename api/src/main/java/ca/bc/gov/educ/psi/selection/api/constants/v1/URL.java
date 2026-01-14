@@ -7,4 +7,5 @@ public final class URL {
   public static final String BASE_URL="/api/v1/psi-selection";
   public static final String REPORT_URL="/api/v1/psi-selection/report";
   public static final String PSI_URL="/api/v1/psi";
+  public static final String PAGINATED="/paginated";
 }
