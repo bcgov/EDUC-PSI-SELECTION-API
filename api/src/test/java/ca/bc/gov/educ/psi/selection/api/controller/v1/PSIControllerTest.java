@@ -48,7 +48,7 @@ public class PSIControllerTest {
 
   @Test
   void testFindAllPaginated_GivenNoSearchCriteria_ShouldReturnAllPSIs() throws Exception {
-    final GrantedAuthority grantedAuthority = () -> "SCOPE_READ_PSI_SELECTION";
+    final GrantedAuthority grantedAuthority = () -> "SCOPE_READ_PSI";
     final var mockAuthority = oidcLogin().authorities(grantedAuthority);
 
     PsiEntity psi1 = createMockPSI("001", "Test PSI 1", "Y", "PAPER", "CSL001");
@@ -75,7 +75,7 @@ public class PSIControllerTest {
 
   @Test
   void testFindAllPaginated_GivenPsiCodeSearch_ShouldReturnFilteredResults() throws Exception {
-    final GrantedAuthority grantedAuthority = () -> "SCOPE_READ_PSI_SELECTION";
+    final GrantedAuthority grantedAuthority = () -> "SCOPE_READ_PSI";
     final var mockAuthority = oidcLogin().authorities(grantedAuthority);
 
     PsiEntity psi1 = createMockPSI("001", "South University", "Y", "PAPER", "CSL001");
@@ -105,7 +105,7 @@ public class PSIControllerTest {
 
   @Test
   void testFindAllPaginated_GivenPsiNameSearch_ShouldReturnFilteredResults() throws Exception {
-    final GrantedAuthority grantedAuthority = () -> "SCOPE_READ_PSI_SELECTION";
+    final GrantedAuthority grantedAuthority = () -> "SCOPE_READ_PSI";
     final var mockAuthority = oidcLogin().authorities(grantedAuthority);
 
     PsiEntity psi1 = createMockPSI("001", "South University", "Y", "PAPER", "CSL001");
@@ -135,7 +135,7 @@ public class PSIControllerTest {
 
   @Test
   void testFindAllPaginated_GivenMultipleSearchCriteria_ShouldReturnFilteredResults() throws Exception {
-    final GrantedAuthority grantedAuthority = () -> "SCOPE_READ_PSI_SELECTION";
+    final GrantedAuthority grantedAuthority = () -> "SCOPE_READ_PSI";
     final var mockAuthority = oidcLogin().authorities(grantedAuthority);
 
     PsiEntity psi1 = createMockPSI("001", "South University", "Y", "PAPER", "CSL001");
@@ -167,7 +167,7 @@ public class PSIControllerTest {
 
   @Test
   void testFindAllPaginated_GivenOpenFlagSearch_ShouldReturnFilteredResults() throws Exception {
-    final GrantedAuthority grantedAuthority = () -> "SCOPE_READ_PSI_SELECTION";
+    final GrantedAuthority grantedAuthority = () -> "SCOPE_READ_PSI";
     final var mockAuthority = oidcLogin().authorities(grantedAuthority);
 
     PsiEntity psi1 = createMockPSI("001", "South University", "Y", "PAPER", "CSL001");
