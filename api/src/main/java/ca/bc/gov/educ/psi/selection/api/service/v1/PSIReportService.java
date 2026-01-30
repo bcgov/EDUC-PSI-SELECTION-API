@@ -2,6 +2,7 @@ package ca.bc.gov.educ.psi.selection.api.service.v1;
 
 import ca.bc.gov.educ.psi.selection.api.exception.PSISelectionAPIRuntimeException;
 import ca.bc.gov.educ.psi.selection.api.model.v1.sts.OrderEntity;
+import ca.bc.gov.educ.psi.selection.api.model.v1.sts.OrderItemEntity;
 import ca.bc.gov.educ.psi.selection.api.repository.v1.OrderRepository;
 import ca.bc.gov.educ.psi.selection.api.rest.RestUtils;
 import ca.bc.gov.educ.psi.selection.api.struct.v1.DownloadableReportResponse;
@@ -69,14 +70,16 @@ public class PSIReportService {
             CSVPrinter csvPrinter = new CSVPrinter(writer, csvFormat);
 
             for (Student student : students) {
-                String psiName = null;
-                String transmissionMode = null;
-                String orderType = null;
+                String psiName;
+                String transmissionMode;
+                String orderType;
                 if(orderMap.containsKey(student.getPen())) {
                     for(OrderEntity order: orderMap.get(student.getPen())){
-                        var orderItem = order.getOrderItemEntities().stream().findFirst();
-                        if(orderItem.isPresent()) {
-                            var delivery = orderItem.get().getDeliveryInfoEntity();
+                        for(OrderItemEntity orderItem: order.getOrderItemEntities()){
+                            psiName = "Not Applicable";
+                            transmissionMode = "Not Applicable";
+                            orderType = "Not Applicable";
+                            var delivery = orderItem.getDeliveryInfoEntity();
                             var infoType = delivery.getInfoType();
                             if(StringUtils.isNotBlank(infoType) && infoType.equalsIgnoreCase("PSI_PREF")) {
                                 transmissionMode = delivery.getTransmissionMode();
@@ -87,7 +90,7 @@ public class PSIReportService {
                             }
                             if(StringUtils.isNotBlank(transmissionMode)) {
                                 if (transmissionMode.equalsIgnoreCase("PAPER")) {
-                                    if (StringUtils.isNotBlank(orderItem.get().getEcmPsiMailBtcID())) {
+                                    if (StringUtils.isNotBlank(orderItem.getEcmPsiMailBtcID())) {
                                         orderType = "Send Now";
                                     } else {
                                         orderType = "End of July";
@@ -100,14 +103,10 @@ public class PSIReportService {
                                     }
                                 }
                             }
-                        } else {
-                            psiName = "Not Applicable";
-                            transmissionMode = "Not Applicable";
-                            orderType = "Not Applicable";
+                            
+                            List<String> row = prepareDataForCsv(student, psiName, transmissionMode, orderType);
+                            csvPrinter.printRecord(row);
                         }
-
-                        List<String> row = prepareDataForCsv(student, psiName, transmissionMode, orderType);
-                        csvPrinter.printRecord(row);
                     }
                 } else {
                     psiName = "Not Applicable";
