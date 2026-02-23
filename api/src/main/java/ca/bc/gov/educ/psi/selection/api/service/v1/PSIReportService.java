@@ -53,7 +53,8 @@ public class PSIReportService {
 
         // oct 1st -> Sept 30 
         var currentReportingPeriod = getCurrentReportingPeriod();
-        List<OrderEntity> orderEntities = orderRepository.findAllByCreateDateBetweenAndOrderDateIsNotNull(currentReportingPeriod.getLeft(), currentReportingPeriod.getRight());
+        Set<String> studentPens = students.stream().map(Student::getPen).collect(Collectors.toSet());
+        List<OrderEntity> orderEntities = orderRepository.findAllByStudentPensAndDateRange(studentPens, currentReportingPeriod.getLeft(), currentReportingPeriod.getRight());
         log.debug("Fetched {} order entity records", orderEntities.size());
         log.debug("First fetched order record if available: {}", orderEntities.stream().findFirst().orElse(null));
 
