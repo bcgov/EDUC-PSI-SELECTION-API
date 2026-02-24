@@ -56,11 +56,12 @@ public class PSIReportService {
         var currentReportingPeriod = getCurrentReportingPeriod();
 
         Set<String> studentPens = students.stream().map(Student::getPen).collect(Collectors.toSet());
+        log.debug("Fetching orders for {} students", students.size());
         Map<String, List<PSIOrderRow>> orderMap = orderRepository
                 .findOrderRowsByStudentPensAndDateRange(studentPens, currentReportingPeriod.getLeft(), currentReportingPeriod.getRight())
                 .stream()
                 .collect(Collectors.groupingBy(PSIOrderRow::studentPen));
-
+        log.debug("Order fetch complete");
 
         CSVFormat csvFormat = CSVFormat.DEFAULT.builder()
                 .setHeader(SURNAME.getCode(), FIRST_NAME.getCode(), MIDDLE_NAMES.getCode(), LOCAL_ID.getCode(), PEN.getCode(), ORDER_PLACED.getCode(), PSI_NAME.getCode(), TRANSMISSION_MODE.getCode(), ORDER_TYPE.getCode())
