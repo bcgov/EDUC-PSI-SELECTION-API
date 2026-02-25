@@ -42,7 +42,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 public class RestUtils {
     private static final String CONTENT_TYPE = "Content-Type";
     public static final String PAGE_SIZE_VALUE = "5";
-    public static final int chunkSize = 999;
+    public static final int chunkSize = 500;
     private final Map<String, SchoolTombstone> schoolMap = new ConcurrentHashMap<>();
     private final Map<String, PsiEntity> psiMap = new ConcurrentHashMap<>();
     private final Map<String, List<UUID>> independentAuthorityToSchoolIDMap = new ConcurrentHashMap<>();
