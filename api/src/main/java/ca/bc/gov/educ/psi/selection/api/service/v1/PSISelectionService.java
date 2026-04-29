@@ -26,10 +26,7 @@ public class PSISelectionService {
   }
   
   public List<StudentPsiChoice> getStudentPSIChoices(String transmissionMode, String psiYear, String psiCode) {
-    List<String> psiList = new ArrayList<>();
-    if(psiCode != null){
-      psiList = List.of(psiCode.split(",", -1));
-    }
+    List<String> psiList = parsePsiCodes(psiCode);
 
     var dates = getFromAndToDatesFromPSIYear(psiYear);
     
@@ -44,6 +41,26 @@ public class PSISelectionService {
       studentPsiChoice.setPsiYear(psiYear);
     });
     return structChoices;
+  }
+
+  private List<String> parsePsiCodes(String psiCode) {
+    if (psiCode == null) {
+      return new ArrayList<>();
+    }
+
+    List<String> psiList = new ArrayList<>();
+    for (String code : psiCode.split(",", -1)) {
+      var trimmedCode = code.trim();
+      if (!trimmedCode.isEmpty()) {
+        psiList.add(trimmedCode);
+      }
+    }
+
+    if (psiList.stream().anyMatch(code -> code.equalsIgnoreCase("all"))) {
+      return new ArrayList<>();
+    }
+
+    return psiList;
   }
   
   private Pair<LocalDateTime, LocalDateTime> getFromAndToDatesFromPSIYear(String psiYear){

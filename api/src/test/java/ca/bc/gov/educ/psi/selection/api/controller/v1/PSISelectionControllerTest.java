@@ -91,6 +91,60 @@ public class PSISelectionControllerTest {
             .andExpect(jsonPath("$", hasSize(2)));
     
   }
+
+  @Test
+  void testGetChoicesForAll_GivenAllPsiCode_ShouldReturnStatusOK() throws Exception {
+    final GrantedAuthority grantedAuthority = () -> "SCOPE_READ_PSI_SELECTION";
+    final var mockAuthority = oidcLogin().authorities(grantedAuthority);
+
+    var psi = psiRepository.save(createMockPSI());
+    studentPSIChoiceRepository.save(createMockStudentPSIChoice());
+
+    var psi2 = createMockPSI();
+    psi2.setPsiCode("333");
+    psiRepository.save(psi2);
+    var choice2 = createMockStudentPSIChoice();
+    choice2.setPsiChoicesID(BigInteger.TEN);
+    choice2.setPsiCode("333");
+    studentPSIChoiceRepository.save(choice2);
+
+    this.mockMvc.perform(
+                    get(URL.BASE_URL + "/student/search?transmissionMode=" + psi.getTransmissionMode() + "&psiCode=all&psiYear=2022").with(mockAuthority))
+            .andDo(print())
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$", hasSize(2)));
+  }
+
+  @Test
+  void testGetChoicesForMultiplePsiCodes_GivenCommaSeparatedPsiCodes_ShouldReturnStatusOK() throws Exception {
+    final GrantedAuthority grantedAuthority = () -> "SCOPE_READ_PSI_SELECTION";
+    final var mockAuthority = oidcLogin().authorities(grantedAuthority);
+
+    var psi = psiRepository.save(createMockPSI());
+    studentPSIChoiceRepository.save(createMockStudentPSIChoice());
+
+    var psi2 = createMockPSI();
+    psi2.setPsiCode("021");
+    psiRepository.save(psi2);
+    var choice2 = createMockStudentPSIChoice();
+    choice2.setPsiChoicesID(BigInteger.TEN);
+    choice2.setPsiCode("021");
+    studentPSIChoiceRepository.save(choice2);
+
+    var psi3 = createMockPSI();
+    psi3.setPsiCode("333");
+    psiRepository.save(psi3);
+    var choice3 = createMockStudentPSIChoice();
+    choice3.setPsiChoicesID(BigInteger.valueOf(11));
+    choice3.setPsiCode("333");
+    studentPSIChoiceRepository.save(choice3);
+
+    this.mockMvc.perform(
+                    get(URL.BASE_URL + "/student/search?transmissionMode=" + psi.getTransmissionMode() + "&psiCode=222,021&psiYear=2022").with(mockAuthority))
+            .andDo(print())
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$", hasSize(2)));
+  }
   
   private StudentPsiChoiceEntity createMockStudentPSIChoice(){
     StudentPsiChoiceEntity studentPSIChoiceEntity = new StudentPsiChoiceEntity();
@@ -119,5 +173,3 @@ public class PSISelectionControllerTest {
   }
 
 }
-
-
