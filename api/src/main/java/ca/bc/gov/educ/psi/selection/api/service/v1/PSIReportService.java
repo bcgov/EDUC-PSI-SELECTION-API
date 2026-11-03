@@ -1,8 +1,6 @@
 package ca.bc.gov.educ.psi.selection.api.service.v1;
 
 import ca.bc.gov.educ.psi.selection.api.exception.PSISelectionAPIRuntimeException;
-import ca.bc.gov.educ.psi.selection.api.model.v1.sts.OrderEntity;
-import ca.bc.gov.educ.psi.selection.api.model.v1.sts.OrderItemEntity;
 import ca.bc.gov.educ.psi.selection.api.repository.v1.OrderRepository;
 import ca.bc.gov.educ.psi.selection.api.rest.RestUtils;
 import ca.bc.gov.educ.psi.selection.api.struct.v1.DownloadableReportResponse;
@@ -52,7 +50,7 @@ public class PSIReportService {
         log.debug("Fetched {} student details", students.size());
         log.debug("first fetched student if available: {}", students.stream().findFirst().orElse(null));
 
-        // oct 1st -> Sept 30 
+      // Sept 1st -> Aug 31
         var currentReportingPeriod = getCurrentReportingPeriod();
 
         Set<String> studentPens = students.stream().map(Student::getPen).collect(Collectors.toSet());
@@ -71,18 +69,18 @@ public class PSIReportService {
             ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
             BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(byteArrayOutputStream));
             CSVPrinter csvPrinter = new CSVPrinter(writer, csvFormat);
-            
+
             for (Student student : students) {
                 if (orderMap.containsKey(student.getPen())) {
                     for (PSIOrderRow row : orderMap.get(student.getPen())) {
                         String psiName = restUtils.getPsiByCode(row.psiCode())
                                 .map(psi -> psi.getPsiName())
                                 .orElse("PSI name not found");
-    
+
                         String transmissionMode = row.transmissionMode();
                         String orderType = resolveOrderType(row);
-    
-                        csvPrinter.printRecord(prepareDataForCsv(student, psiName, transmissionMode, orderType));
+
+                      csvPrinter.printRecord(prepareDataForCsv(student, psiName, transmissionMode, orderType));
                     }
                 } else {
                     csvPrinter.printRecord(prepareDataForCsv(student, "Not Applicable", "Not Applicable", "Not Applicable"));
@@ -116,15 +114,15 @@ public class PSIReportService {
         }
         return "Not Applicable";
     }
-    
-    private Pair<LocalDateTime, LocalDateTime> getCurrentReportingPeriod(){
+
+  private Pair<LocalDateTime, LocalDateTime> getCurrentReportingPeriod(){
         var now = LocalDateTime.now();
-        if(now.getMonthValue() < 10){
-            return Pair.of(LocalDateTime.now().withYear(now.getYear()-1).withMonth(10).withDayOfMonth(1).withHour(0).withMinute(0).withSecond(0),
-                    LocalDateTime.now().withYear(now.getYear()).withMonth(9).withDayOfMonth(30).withHour(23).withMinute(59).withSecond(59));
+    if (now.getMonthValue() < 9) {
+      return Pair.of(LocalDateTime.now().withYear(now.getYear() - 1).withMonth(9).withDayOfMonth(1).withHour(0).withMinute(0).withSecond(0),
+          LocalDateTime.now().withYear(now.getYear()).withMonth(8).withDayOfMonth(31).withHour(23).withMinute(59).withSecond(59));
         }
-        return Pair.of(LocalDateTime.now().withYear(now.getYear()).withMonth(10).withDayOfMonth(1).withHour(0).withMinute(0).withSecond(0),
-                LocalDateTime.now().withYear(now.getYear()+1).withMonth(9).withDayOfMonth(30).withHour(23).withMinute(59).withSecond(59));
+    return Pair.of(LocalDateTime.now().withYear(now.getYear()).withMonth(9).withDayOfMonth(1).withHour(0).withMinute(0).withSecond(0),
+        LocalDateTime.now().withYear(now.getYear() + 1).withMonth(8).withDayOfMonth(31).withHour(23).withMinute(59).withSecond(59));
     }
 
     public List<String> prepareDataForCsv(Student student, String psiName, String transmissionMode, String orderType) {
